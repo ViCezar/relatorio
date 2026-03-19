@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: relatorio_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: relatorio_backend
+    environment:
+      DATABASE_URL: ${BACKEND_DATABASE_URL}
+      JWT_SECRET_KEY: ${BACKEND_JWT_SECRET_KEY}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRES_MINUTES: 1440
+      CORS_ORIGINS: http://localhost:5173
+    ports:
+      - '8002:8002'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: relatorio_frontend
+    environment:
+      VITE_API_URL: ${FRONTEND_VITE_API_URL}
+    ports:
+      - '5173:5173'
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
