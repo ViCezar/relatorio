@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -61,7 +60,6 @@ export function BaldussiManualPage() {
   const [board, setBoard] = useState<BaldussiManualBoard | null>(null)
   const [draftByAgent, setDraftByAgent] = useState<Record<number, DraftValues>>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
 
   const loadBoard = async () => {
@@ -161,7 +159,7 @@ export function BaldussiManualPage() {
     return { sectors: sectorTotals, grand }
   }, [board, draftByAgent])
 
-  const saveAll = async (silent = false) => {
+  const saveAll = async () => {
     if (!isAdmin || !selectedBranchId || !board) {
       return
     }
@@ -183,9 +181,6 @@ export function BaldussiManualPage() {
     )
 
     setError('')
-    if (!silent) {
-      setIsSaving(true)
-    }
 
     try {
       const { data } = await api.post<BaldussiManualBoard>(
@@ -196,10 +191,6 @@ export function BaldussiManualPage() {
       setDraftByAgent(toDraftMap(data))
     } catch (err) {
       setError(getApiErrorMessage(err))
-    } finally {
-      if (!silent) {
-        setIsSaving(false)
-      }
     }
   }
 
@@ -207,7 +198,7 @@ export function BaldussiManualPage() {
     if (!isAdmin) {
       return
     }
-    void saveAll(true)
+    void saveAll()
   }
 
   return (
@@ -217,57 +208,9 @@ export function BaldussiManualPage() {
         subtitle='Lançamento manual por setor: Baldussi Destino, Baldussi Origem e Blip por colaborador.'
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className='text-base'>Filtros e ação</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className='grid gap-4 lg:grid-cols-[1fr_280px]'>
-            <div className='space-y-3'>
-              <div className='flex flex-wrap items-center justify-between gap-3'>
-                <div className='flex items-end'>
-                  <Button variant='outline' onClick={loadBoard} disabled={isLoading || !selectedBranchId}>
-                    {isLoading ? 'Carregando...' : 'Recarregar'}
-                  </Button>
-                </div>
-                {isAdmin ? (
-                  <div className='flex items-end'>
-                    <Button onClick={() => void saveAll()} disabled={isSaving || !selectedBranchId || !board}>
-                      {isSaving ? 'Salvando...' : 'Salvar lancamentos'}
-                    </Button>
-                  </div>
-                ) : null}
-                <div className='flex items-end'>
-                  <p className='rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700'>
-                    Mês/Ano global: {selectedMonth}/{selectedYear}
-                  </p>
-                </div>
-              </div>
-              
-              {!selectedBranchId ? <p className='text-sm text-amber-700'>Selecione uma filial no menu lateral.</p> : null}
-              {error ? <p className='text-sm text-red-600'>{error}</p> : null}
-            </div>
-
-            <div className='rounded-lg border border-border bg-slate-50 p-3'>
-              <p className='text-xs font-semibold uppercase tracking-wide text-slate-500'>Totais do periodo</p>
-              <div className='mt-2 space-y-2'>
-                <p className='rounded-md bg-slate-900 px-3 py-2 text-sm font-bold text-white'>
-                  Total geral: {totals.grand.total}
-                </p>
-                <p className='rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-700'>
-                  Baldussi Destino: {totals.grand.baldussi_destino}
-                </p>
-                <p className='rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-700'>
-                  Baldussi Origem: {totals.grand.baldussi_origem}
-                </p>
-                <p className='rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-700'>
-                  BLIP: {totals.grand.blip}
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {isLoading ? <p className='text-sm text-slate-600'>Carregando atendimentos...</p> : null}
+      {!selectedBranchId ? <p className='text-sm text-amber-700'>Selecione uma filial no menu lateral.</p> : null}
+      {error ? <p className='text-sm text-red-600'>{error}</p> : null}
 
       {board?.sectors.map((sector) => {
         const sectorTotals = totals.sectors.get(sector.sector_id) ?? {
@@ -363,4 +306,3 @@ export function BaldussiManualPage() {
     </div>
   )
 }
-

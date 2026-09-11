@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { BarChart3, CalendarRange, TrendingUp, Trophy } from 'lucide-react'
+import { BarChart3, CalendarRange, Download, TrendingUp, Trophy } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Bar,
@@ -15,7 +15,6 @@ import {
   YAxis,
 } from 'recharts'
 
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
@@ -23,6 +22,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useBranch } from '@/context/BranchContext'
 import { usePeriod } from '@/context/PeriodContext'
 import { api, getApiErrorMessage } from '@/lib/api'
+import { exportDataPdf } from '@/lib/pdfExport'
 import { cn, formatNumber } from '@/lib/utils'
 import type { BaldussiManualBoard, Branch, ReportConsolidated, Sector } from '@/types'
 
@@ -842,18 +842,6 @@ export function MonthComparisonPage() {
     [tableRows, tableSectorColumns]
   )
 
-  const selectedBranchLabel =
-    branchFilter === 'all' ? 'Todas as filiais' : branches.find((branch) => String(branch.id) === branchFilter)?.name ?? '-'
-
-  const selectedAttendanceLabels = useMemo(
-    () =>
-      attendanceFilterOptions
-        .filter((option) => activeAttendanceFilters.includes(option.value))
-        .map((option) => option.label),
-    [activeAttendanceFilters]
-  )
-  const selectedMonthsLabel = selectedMonthsSorted.map((month) => `${getMonthMeta(month).shortLabel}/${yearFilter}`).join(', ')
-
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear()
     const options = Array.from({ length: 9 }, (_, index) => currentYear - 3 + index)
@@ -893,15 +881,133 @@ export function MonthComparisonPage() {
     })
   }
 
+  const handleExportPdf = () => {
+    if (monthSummary.length === 0) {
+      return
+    }
+
+    const branchLabel =
+      branchFilter === 'all'
+        ? 'Todas as Filiais'
+        : branches.find((branch) => String(branch.id) === branchFilter)?.name ?? 'Filial'
+    const activeFilterOptions = attendanceFilterOptions.filter((option) => activeAttendanceFilters.includes(option.value))
+    const activeSeries = activeFilterOptions.map((option) => ({
+      key: option.value,
+      label: option.label,
+      color: option.color,
+    }))
+    const lineSeries = [{ key: 'selected_total', label: 'Total (Filtros)', color: '#1f4b8f' }, ...activeSeries]
+    const tableColumns = [
+      { header: 'Mes', accessor: 'label', width: 32 },
+      { header: 'Total (Filtros)', accessor: 'selected_total', align: 'right' as const, width: 35 },
+      ...tableSectorColumns.map((column) => ({
+        header: column.label,
+        accessor: column.key,
+        align: 'right' as const,
+        width: 30,
+      })),
+    ]
+
+    exportDataPdf({
+      title: 'Comparativo Entre Meses',
+      subtitle: `${branchLabel} | ${yearFilter}`,
+      filename: `comparativo-meses-${yearFilter}.pdf`,
+      meta: [
+        `Filial: ${branchLabel}`,
+        `Setor: ${selectedSectorLabel}`,
+        `Meses: ${selectedMonthsSorted.map((month) => getMonthMeta(month).shortLabel).join(', ')}`,
+        `Dados: ${activeFilterOptions.map((option) => option.label).join(', ')}`,
+      ],
+      metrics: [
+        { label: 'Total Geral', value: formatNumber(totalGeneral), color: '#2f62cf' },
+        { label: 'Media por Mes', value: formatNumber(averagePerMonth), color: '#0f9f76' },
+        {
+          label: 'Melhor Mes',
+          value: bestMonth ? `${bestMonth.shortLabel}/${yearFilter}` : '-',
+          helper: bestMonth ? formatNumber(bestMonth.selected_total) : '-',
+          color: '#f08a24',
+        },
+        { label: 'Variacao Ultimo vs Primeiro', value: variation.percentText, helper: variation.label, color: '#e14e4e' },
+      ],
+      charts: [
+        {
+          title: 'Evolucao Mensal',
+          type: 'line',
+          rows: monthSummary.map((monthItem) => ({
+            label: monthItem.shortLabel,
+            values: lineSeries.reduce<Record<string, number>>((accumulator, series) => {
+              accumulator[series.key] = Number(monthItem[series.key as keyof MonthSummary] ?? 0)
+              return accumulator
+            }, {}),
+          })),
+          series: lineSeries,
+        },
+        sectorFilter === 'all'
+          ? {
+              title: 'Total por Setor',
+              rows: filteredSectorChartData.map((row) => ({
+                label: row.setor,
+                values: selectedMonthsSorted.reduce<Record<string, number>>((accumulator, month) => {
+                  const key = getMonthDataKey(month)
+                  accumulator[key] = Number(row[key] ?? 0)
+                  return accumulator
+                }, {}),
+              })),
+              series: selectedMonthsSorted.map((month, index) => ({
+                key: getMonthDataKey(month),
+                label: `${getMonthMeta(month).shortLabel}/${yearFilter}`,
+                color: monthBarColors[index % monthBarColors.length],
+              })),
+              maxRows: 10,
+            }
+          : {
+              title: `Detalhe do Setor: ${selectedSectorLabel}`,
+              rows: monthSummary.map((monthItem) => ({
+                label: monthItem.shortLabel,
+                values: activeFilterOptions.reduce<Record<string, number>>((accumulator, series) => {
+                  accumulator[series.value] = Number(monthItem[series.value] ?? 0)
+                  return accumulator
+                }, {}),
+              })),
+              series: activeSeries,
+              maxRows: 12,
+            },
+      ],
+      tables: [
+        {
+          title: 'Resumo por Mes',
+          columns: tableColumns,
+          rows: tableRows.map((row) => {
+            const sectorValues = row.sectors.reduce<Record<string, number>>((accumulator, sector) => {
+              accumulator[sector.key] = sector.value
+              return accumulator
+            }, {})
+
+            return {
+              label: row.label,
+              selected_total: row.selected_total,
+              ...sectorValues,
+            }
+          }),
+          footerRows: [
+            {
+              label: `Total (${selectedMonthsSorted.length} meses)`,
+              selected_total: totalGeneral,
+              ...totalByColumn.reduce<Record<string, number>>((accumulator, totalItem) => {
+                accumulator[totalItem.key] = totalItem.value
+                return accumulator
+              }, {}),
+            },
+          ],
+        },
+      ],
+    })
+  }
+
   const hasDataToDisplay = selectedBranches.length > 0 && selectedMonthsSorted.length > 0
 
   return (
     <div className='space-y-5'>
-      <PageHeader
-        title='Comparativo Entre Meses'
-        subtitle='Compare a evolucao mensal por filial e setor. Veja como o volume de atendimentos esta variando entre os meses.'
-      />
-
       <Card className='border-[#d5deea]'>
         <CardHeader className='pb-1'>
           <CardTitle className='text-[18px] font-semibold text-[#1f365d]'>Filtros</CardTitle>
@@ -1019,16 +1125,6 @@ export function MonthComparisonPage() {
                 )
               })}
             </div>
-          </div>
-
-          <div className='flex flex-wrap items-center gap-2 border-t border-[#d8e3f2] pt-3'>
-            <p className='text-sm font-semibold text-[#20385e]'>Filtros Ativos:</p>
-            <FilterChip label={`Filial: ${selectedBranchLabel}`} />
-            <FilterChip label={`Setor: ${selectedSectorLabel}`} />
-            <FilterChip label={`Meses: ${selectedMonthsLabel}`} />
-            {selectedAttendanceLabels.map((label) => (
-              <FilterChip key={label} label={`Atendimento: ${label}`} />
-            ))}
           </div>
 
           {error ? <p className='text-sm text-[#b54646]'>{error}</p> : null}
@@ -1365,8 +1461,9 @@ export function MonthComparisonPage() {
               <CardHeader className='pb-2'>
                 <div className='flex items-center justify-between gap-3'>
                   <CardTitle className='text-[24px] font-bold tracking-tight text-[#1f365d]'>Resumo por Mês</CardTitle>
-                  <Button type='button' size='sm' variant='outline' onClick={() => undefined}>
-                    Exportar (CSV/Excel)
+                  <Button type='button' size='sm' variant='outline' onClick={handleExportPdf} disabled={isLoading || monthSummary.length === 0}>
+                    <Download className='mr-2 h-4 w-4' />
+                    Exportar PDF
                   </Button>
                 </div>
               </CardHeader>
@@ -1441,13 +1538,5 @@ function KpiCard({ title, value, helper, icon: Icon, valueClassName }: KpiCardPr
         {helper ? <p className='mt-2 text-sm font-semibold text-[#5a7193]'>{helper}</p> : null}
       </CardContent>
     </Card>
-  )
-}
-
-function FilterChip({ label }: { label: string }) {
-  return (
-    <span className='rounded-full border border-[#d2deee] bg-[#f5f8fe] px-3 py-1 text-xs font-semibold text-[#284770]'>
-      {label}
-    </span>
   )
 }

@@ -12,7 +12,7 @@ import { BaldussiManualPage } from '@/pages/BaldussiManualPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ImportPage } from '@/pages/ImportPage'
 import { LoginPage } from '@/pages/LoginPage'
-import { ReportsPage } from '@/pages/ReportsPage'
+import { PendingPage } from '@/pages/PendingPage'
 import { SectorsPage } from '@/pages/SectorsPage'
 import { UsersPage } from '@/pages/UsersPage'
 
@@ -101,10 +101,10 @@ export default function App() {
         />
         <Route path='/baldussi-manual' element={<BaldussiManualPage />} />
         <Route
-          path='/reports'
+          path='/pendencias'
           element={
             <RoleRoute allowedRoles={['admin']}>
-              <ReportsPage />
+              <PendingPage />
             </RoleRoute>
           }
         />

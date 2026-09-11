@@ -10,9 +10,9 @@ function resolveApiBaseUrl(): string {
 
   if (!configuredUrl) {
     if (hasWindow) {
-      return `${window.location.protocol}//${window.location.hostname}:8002`
+      return `${window.location.protocol}//${window.location.hostname}:8003`
     }
-    return 'http://localhost:8002'
+    return 'http://localhost:8003'
   }
 
   if (!hasWindow) {
@@ -23,7 +23,7 @@ function resolveApiBaseUrl(): string {
     const parsed = new URL(configuredUrl)
     if (isLocalHost(parsed.hostname) && !isLocalHost(window.location.hostname)) {
       const protocol = parsed.protocol || window.location.protocol
-      const port = parsed.port || '8002'
+      const port = parsed.port || '8003'
       return `${protocol}//${window.location.hostname}:${port}`
     }
   } catch {

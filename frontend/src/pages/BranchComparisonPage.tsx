@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
+import { Download } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useBranch } from '@/context/BranchContext'
 import { usePeriod } from '@/context/PeriodContext'
 import { api, getApiErrorMessage } from '@/lib/api'
+import { exportDataPdf } from '@/lib/pdfExport'
 import { cn, formatNumber } from '@/lib/utils'
 import type { BaldussiManualBoard, Branch, ReportConsolidated } from '@/types'
 
@@ -361,20 +364,6 @@ export function BranchComparisonPage() {
     return { total, totalPending, totalBlip, withReport, avg }
   }, [rowsWithSelectedTotal, sectorFilter])
 
-  const selectedFilterLabels = useMemo(
-    () =>
-      attendanceFilterOptions
-        .filter((option) => activeAttendanceFilters.includes(option.value))
-        .map((option) => option.label),
-    [activeAttendanceFilters]
-  )
-  const selectedSectorLabel = useMemo(() => {
-    if (sectorFilter === 'all') {
-      return 'Todos os Setores'
-    }
-    return sectorOptions.find((option) => option.value === sectorFilter)?.label ?? 'Todos os Setores'
-  }, [sectorFilter, sectorOptions])
-
   const handleAttendanceFilterToggle = (filter: ComparisonAttendanceFilter) => {
     setActiveAttendanceFilters((current) => {
       const alreadySelected = current.includes(filter)
@@ -386,6 +375,78 @@ export function BranchComparisonPage() {
       return attendanceFilterOptions
         .map((option) => option.value)
         .filter((optionValue) => nextFilters.includes(optionValue))
+    })
+  }
+
+  const handleExportPdf = () => {
+    if (rowsWithSelectedTotal.length === 0) {
+      return
+    }
+
+    const periodLabel = `${String(selectedMonth).padStart(2, '0')}/${selectedYear}`
+    const selectedSectorLabel =
+      sectorFilter === 'all' ? 'Todos os Setores' : sectorOptions.find((option) => option.value === sectorFilter)?.label ?? 'Setor'
+    const activeFilterOptions = attendanceFilterOptions.filter((option) => activeAttendanceFilters.includes(option.value))
+    const activeSeries = activeFilterOptions.map((option) => ({
+      key: option.value,
+      label: option.label,
+      color: option.color,
+    }))
+
+    exportDataPdf({
+      title: 'Comparativo entre Filiais',
+      subtitle: `Periodo ${periodLabel}`,
+      filename: `comparativo-filiais-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`,
+      meta: [
+        `Setor: ${selectedSectorLabel}`,
+        `Dados: ${activeFilterOptions.map((option) => option.label).join(', ')}`,
+        `Filiais: ${branches.length}`,
+      ],
+      metrics: [
+        { label: 'Total Geral', value: formatNumber(summary.total), color: '#2f62cf' },
+        { label: 'Filiais com Relatorio', value: formatNumber(summary.withReport), color: '#0f9f76' },
+        { label: 'Media por Filial', value: formatNumber(summary.avg), color: '#f08a24' },
+        {
+          label: source === 'excel' ? 'Pendencias Abertas' : 'Total BLIP',
+          value: formatNumber(source === 'excel' ? summary.totalPending : summary.totalBlip),
+          color: '#e14e4e',
+        },
+      ],
+      charts: [
+        {
+          title: 'Total por Filial',
+          rows: rowsWithSelectedTotal.map((row) => ({
+            label: row.branch_name,
+            values: activeFilterOptions.reduce<Record<string, number>>((accumulator, option) => {
+              accumulator[option.value] = Number(row[option.value] ?? 0)
+              return accumulator
+            }, {}),
+          })),
+          series: activeSeries,
+          maxRows: 10,
+        },
+      ],
+      tables: [
+        {
+          title: 'Ranking de Filiais',
+          columns: [
+            { header: '#', accessor: 'rank', align: 'center', width: 14 },
+            { header: 'Filial', accessor: 'branch_name', width: 80 },
+            { header: 'Total (Filtros)', accessor: 'selected_total', align: 'right', width: 35 },
+            { header: 'Atendentes', accessor: 'agents_with_tickets', align: 'right', width: 30 },
+            { header: 'Pendencias', accessor: 'pending', align: 'right', width: 28 },
+            { header: 'Status', accessor: 'status', width: 42 },
+          ],
+          rows: rowsWithSelectedTotal.map((row, index) => ({
+            rank: index + 1,
+            branch_name: row.branch_name,
+            selected_total: row.selected_total,
+            agents_with_tickets: row.agents_with_tickets,
+            pending: row.pending,
+            status: row.load_error ? 'Falha ao carregar' : row.has_report ? 'Com relatorio' : 'Sem relatorio',
+          })),
+        },
+      ],
     })
   }
 
@@ -417,7 +478,13 @@ export function BranchComparisonPage() {
               </div>
             </div>
 
-            <div className='rounded-full bg-[#e8f0fb] px-5 py-1 text-[15px] font-semibold text-[#3d5f8a]'>Filiais: {branches.length}</div>
+            <div className='flex flex-wrap items-center gap-2'>
+              <div className='rounded-full bg-[#e8f0fb] px-5 py-1 text-[15px] font-semibold text-[#3d5f8a]'>Filiais: {branches.length}</div>
+              <Button type='button' variant='outline' onClick={handleExportPdf} disabled={isLoading || rowsWithSelectedTotal.length === 0}>
+                <Download className='mr-2 h-4 w-4' />
+                Exportar PDF
+              </Button>
+            </div>
           </div>
 
           <div className='flex flex-wrap items-start gap-2'>
@@ -469,23 +536,6 @@ export function BranchComparisonPage() {
             <SummaryCard title='Media por Filial' value={formatNumber(summary.avg)} />
             <SummaryCard title={source === 'excel' ? 'Pendencias abertas' : 'Total BLIP'} value={formatNumber(source === 'excel' ? summary.totalPending : summary.totalBlip)} />
           </div>
-
-          <Card className='border-[#d5deea]'>
-            <CardContent className='flex flex-wrap items-center gap-2 p-4'>
-              <p className='text-sm font-semibold text-[#20385e]'>Filtros Ativos:</p>
-              <span className='rounded-full border border-[#d2deee] bg-[#f5f8fe] px-3 py-1 text-xs font-semibold text-[#284770]'>
-                Setor: {selectedSectorLabel}
-              </span>
-              {selectedFilterLabels.map((label) => (
-                <span
-                  key={label}
-                  className='rounded-full border border-[#d2deee] bg-[#f5f8fe] px-3 py-1 text-xs font-semibold text-[#284770]'
-                >
-                  {label}
-                </span>
-              ))}
-            </CardContent>
-          </Card>
 
           <div className='grid gap-4 xl:grid-cols-2'>
             <Card className='border-[#d5deea]'>

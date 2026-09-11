@@ -29,6 +29,19 @@ type MenuItem = {
   roles: Role[]
 }
 
+type SidebarTheme = {
+  aside: string
+  border: string
+  heading: string
+  label: string
+  nav: string
+  navActive: string
+  card: string
+  userText: string
+  mutedText: string
+  button: string
+}
+
 const menuItems: MenuItem[] = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'user'] },
   { to: '/branch-comparison', label: 'Comparativo Filiais', icon: BarChart3, roles: ['admin', 'user'] },
@@ -38,7 +51,6 @@ const menuItems: MenuItem[] = [
   { to: '/sectors', label: 'Setores', icon: Layers, roles: ['admin'] },
   { to: '/agents', label: 'Atendentes', icon: Users, roles: ['admin'] },
   { to: '/baldussi-manual', label: 'Atendimentos', icon: ListChecks, roles: ['admin', 'user'] },
-  { to: '/reports', label: 'Relatorios', icon: BarChart3, roles: ['admin'] },
   { to: '/users', label: 'Usuarios', icon: Shield, roles: ['admin'] },
 ]
 
@@ -57,12 +69,87 @@ const monthOptions = [
   { value: 12, label: 'Dezembro' },
 ]
 
+const defaultSidebarTheme: SidebarTheme = {
+  aside: 'border-[#91b8e8] bg-gradient-to-b from-[#f4f9ff] via-[#dcecff] to-[#acd2ff] text-[#1d4775]',
+  border: 'border-[#8fb9e7]',
+  heading: 'text-[#245682]',
+  label: 'text-[#2f5f8f]',
+  nav: 'text-[#1d4775] hover:bg-white/55 hover:text-[#15385f]',
+  navActive: 'bg-gradient-to-r from-[#2f70b7] to-[#80b8ee] text-white shadow-[0_12px_18px_-14px_rgba(33,98,168,0.8)]',
+  card: 'border-[#b6d4f3] bg-white/78',
+  userText: 'text-[#173f6d]',
+  mutedText: 'text-[#55799f]',
+  button: 'border-[#b6d4f3] bg-white/65 text-[#173f6d] hover:bg-white',
+}
+
+const sidebarThemes: Record<string, SidebarTheme> = {
+  londrina: {
+    aside: 'border-[#aab4c2] bg-gradient-to-b from-[#f8fafc] via-[#edf1f6] to-[#cfd6df] text-[#1f2937]',
+    border: 'border-[#aeb8c6]',
+    heading: 'text-[#303946]',
+    label: 'text-[#3c4655]',
+    nav: 'text-[#27313f] hover:bg-white/60 hover:text-[#111827]',
+    navActive: 'bg-gradient-to-r from-[#1f2937] to-[#56606e] text-white shadow-[0_12px_18px_-14px_rgba(31,41,55,0.8)]',
+    card: 'border-[#c8d0db] bg-white/76',
+    userText: 'text-[#1f2937]',
+    mutedText: 'text-[#687385]',
+    button: 'border-[#c8d0db] bg-white/70 text-[#27313f] hover:bg-white',
+  },
+  maringa: {
+    aside: 'border-[#94d2aa] bg-gradient-to-b from-[#f3fbf5] via-[#ddf4e6] to-[#b9e7cb] text-[#1f4d34]',
+    border: 'border-[#8fd0a7]',
+    heading: 'text-[#1f6a43]',
+    label: 'text-[#26724a]',
+    nav: 'text-[#1f4d34] hover:bg-white/55 hover:text-[#123c28]',
+    navActive: 'bg-gradient-to-r from-[#2f8f5b] to-[#7fd39b] text-white shadow-[0_12px_18px_-14px_rgba(35,128,78,0.78)]',
+    card: 'border-[#acdcbc] bg-white/76',
+    userText: 'text-[#16422c]',
+    mutedText: 'text-[#4f7c62]',
+    button: 'border-[#acdcbc] bg-white/68 text-[#16422c] hover:bg-white',
+  },
+  curitiba: {
+    aside: 'border-[#bca1ee] bg-gradient-to-b from-[#faf6ff] via-[#efe1ff] to-[#d8c2ff] text-[#56327e]',
+    border: 'border-[#bca1ee]',
+    heading: 'text-[#6a3a9a]',
+    label: 'text-[#7446a2]',
+    nav: 'text-[#56327e] hover:bg-white/55 hover:text-[#3d225f]',
+    navActive: 'bg-gradient-to-r from-[#7c4cc2] to-[#b789ee] text-white shadow-[0_12px_18px_-14px_rgba(104,64,166,0.78)]',
+    card: 'border-[#d1bdf3] bg-white/76',
+    userText: 'text-[#432469]',
+    mutedText: 'text-[#755b93]',
+    button: 'border-[#d1bdf3] bg-white/68 text-[#432469] hover:bg-white',
+  },
+  cascavel: {
+    aside: 'border-[#e4bd45] bg-gradient-to-b from-[#fffaf0] via-[#ffefbd] to-[#ffd86b] text-[#664a05]',
+    border: 'border-[#e2bc44]',
+    heading: 'text-[#7a5600]',
+    label: 'text-[#815f0e]',
+    nav: 'text-[#684c07] hover:bg-white/55 hover:text-[#3f2f05]',
+    navActive: 'bg-gradient-to-r from-[#f0c13f] to-[#fff1a8] text-[#3f2f05] shadow-[0_12px_18px_-14px_rgba(174,122,0,0.7)]',
+    card: 'border-[#eed37a] bg-white/76',
+    userText: 'text-[#5a4104]',
+    mutedText: 'text-[#8a7331]',
+    button: 'border-[#eed37a] bg-white/68 text-[#5a4104] hover:bg-white',
+  },
+  'ponta grossa': defaultSidebarTheme,
+}
+
+function normalizeBranchName(name: string) {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLocaleLowerCase('pt-BR')
+}
+
 export function Sidebar() {
   const { user, logout } = useAuth()
   const { branches, selectedBranchId, setSelectedBranchId } = useBranch()
   const { selectedMonth, selectedYear, setSelectedMonth, setSelectedYear } = usePeriod()
 
   const visibleMenuItems = user ? menuItems.filter((item) => item.roles.includes(user.role)) : []
+  const selectedBranch = branches.find((branch) => branch.id === selectedBranchId)
+  const sidebarTheme = selectedBranch ? sidebarThemes[normalizeBranchName(selectedBranch.name)] ?? defaultSidebarTheme : defaultSidebarTheme
   const currentYear = new Date().getFullYear()
   const yearOptions = Array.from({ length: 9 }, (_, index) => currentYear - 3 + index)
   if (!yearOptions.includes(selectedYear)) {
@@ -71,17 +158,22 @@ export function Sidebar() {
   }
 
   return (
-    <aside className='fixed left-0 top-0 z-20 flex h-screen w-[280px] min-w-[280px] flex-col border-r border-[#2b4c70] bg-gradient-to-b from-[#1f3b5c] via-[#25476d] to-[#2e5783] px-4 py-6'>
-      <div className='mb-6 flex justify-center'>
+    <aside
+      className={cn(
+        'fixed left-0 top-0 z-20 flex h-screen w-[280px] min-w-[280px] flex-col border-r px-4 py-6 transition-colors duration-300',
+        sidebarTheme.aside
+      )}
+    >
+      <div className='mb-6 flex justify-center rounded-2xl bg-[#16345d]/90 px-3 py-3 shadow-[0_14px_26px_-20px_rgba(21,45,79,0.9)]'>
         <img src={sattrackLogo} alt='Sattrack' className='h-12 w-auto max-w-[180px] object-contain' />
       </div>
-      <p className='mb-5 text-center text-xs font-semibold uppercase tracking-[0.19em] text-[#d5e4f7]'>
+      <p className={cn('mb-5 text-center text-xs font-semibold uppercase tracking-[0.19em]', sidebarTheme.heading)}>
         Mensal de Atendimentos
       </p>
 
-      <div className='space-y-5 border-t border-[#d3e0ef] pt-4'>
+      <div className={cn('space-y-5 border-t pt-4', sidebarTheme.border)}>
         <div className='space-y-2'>
-          <p className='text-xs font-semibold uppercase tracking-[0.15em] text-[#cfe0f5]'>Filial Ativa</p>
+          <p className={cn('text-xs font-semibold uppercase tracking-[0.15em]', sidebarTheme.label)}>Filial Ativa</p>
           <Select
             className='h-10 rounded-xl border-[#c8d7ea] bg-white text-[15px] font-semibold text-[#273f66] shadow-[0_2px_5px_-4px_rgba(25,52,93,0.7)]'
             value={selectedBranchId ? String(selectedBranchId) : ''}
@@ -99,7 +191,7 @@ export function Sidebar() {
         </div>
 
         <div className='space-y-2'>
-          <p className='text-xs font-semibold uppercase tracking-[0.15em] text-[#cfe0f5]'>Mês / Ano</p>
+          <p className={cn('text-xs font-semibold uppercase tracking-[0.15em]', sidebarTheme.label)}>Mês / Ano</p>
           <div className='grid grid-cols-2 gap-4'>
             <Select
               className='h-9 rounded-xl border-[#c8d7ea] bg-white text-[15px] font-semibold text-[#273f66] shadow-[0_2px_5px_-4px_rgba(25,52,93,0.7)]'
@@ -127,7 +219,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className='mt-6 space-y-1.5 border-t border-[#d3e0ef] pt-3'>
+      <nav className={cn('mt-6 space-y-1.5 border-t pt-3', sidebarTheme.border)}>
         {visibleMenuItems.map((item) => {
           const Icon = item.icon
           return (
@@ -136,9 +228,9 @@ export function Sidebar() {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-[15px] font-semibold text-[#e6effb] transition-all hover:bg-white/15 hover:text-white',
-                  isActive &&
-                    'bg-gradient-to-r from-[#13294d] to-[#1a3d71] text-white shadow-[0_10px_16px_-12px_rgba(17,40,78,0.95)]'
+                  'flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-[15px] font-semibold transition-all',
+                  sidebarTheme.nav,
+                  isActive && sidebarTheme.navActive
                 )
               }
             >
@@ -149,12 +241,12 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className='mt-1 rounded-xl border border-[#d4e0ef] bg-white/80 p-3 shadow-[0_14px_22px_-20px_rgba(22,54,95,1)]'>
-        <p className='text-center text-xs text-[#617695]'>Logado como</p>
-        <p className='truncate text-center text-[15px] font-bold text-[#20365a]'>{user?.name}</p>
-        {user?.role === 'admin' ? <p className='mt-1 text-center text-xs text-[#617695]'>Perfil: Administrador</p> : null}
+      <div className={cn('mt-1 rounded-xl border p-3 shadow-[0_14px_22px_-20px_rgba(22,54,95,0.9)]', sidebarTheme.card)}>
+        <p className={cn('text-center text-xs', sidebarTheme.mutedText)}>Logado como</p>
+        <p className={cn('truncate text-center text-[15px] font-bold', sidebarTheme.userText)}>{user?.name}</p>
+        {user?.role === 'admin' ? <p className={cn('mt-1 text-center text-xs', sidebarTheme.mutedText)}>Perfil: Administrador</p> : null}
         <Button
-          className='mt-5.1 h-10 w-full rounded-xl border-[#c8d7ea] bg-[#f3f7fd] text-[15px] font-semibold text-[#223b63] hover:bg-white'
+          className={cn('mt-5.1 h-10 w-full rounded-xl text-[15px] font-semibold', sidebarTheme.button)}
           variant='outline'
           onClick={logout}
         >
